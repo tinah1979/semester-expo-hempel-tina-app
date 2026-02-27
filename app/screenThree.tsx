@@ -1,17 +1,21 @@
 import { Link } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
-export default function ModalScreen() {
+export default function ScreenThree() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Modal Screen</Text>
+      <Text style={styles.title}>Screen Three</Text>
       <Text style={styles.text}>
-        This is a modal screen. It slides up from the bottom and is great for
-        quick info or actions.
+        This screen can be used for details, settings, or additional features.
+        Add content that matches your proposal.
       </Text>
 
       <Link href="/" style={styles.button}>
-        Close Modal
+        Back to Home
+      </Link>
+
+      <Link href="/screenTwo" style={styles.button}>
+        Go to Screen Two
       </Link>
     </View>
   );
