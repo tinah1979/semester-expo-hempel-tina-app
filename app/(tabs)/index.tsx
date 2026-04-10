@@ -1,98 +1,162 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Link, Stack, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { setAddRecipeCallback } from "../../utils/recipeStore";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+// MealDB type
+type Meal = {
+  strMeal: string;
+  strMealThumb: string;
+  strCategory: string;
+  strInstructions: string;
+};
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const router = useRouter();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const [recipes, setRecipes] = useState<any[]>([]);
+  const [inspiration, setInspiration] = useState<Meal | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Register callback so Add Recipe can update this list
+  const addRecipe = (recipe: any) => {
+    setRecipes((prev) => [...prev, recipe]);
+  };
+
+  useEffect(() => {
+    setAddRecipeCallback(addRecipe);
+  }, []);
+
+  // Fetch random recipe
+  useEffect(() => {
+    const loadInspiration = async () => {
+      try {
+        const res = await fetch(
+          "https://www.themealdb.com/api/json/v1/1/random.php"
+        );
+        const json = await res.json();
+        setInspiration(json.meals[0]);
+      } catch {
+        setError("Could not load recipe inspiration");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadInspiration();
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <Stack.Screen options={{ title: "RecipeBox" }} />
+
+      <Text style={styles.header}>RecipeBox</Text>
+
+      {/* Inspiration */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Inspiration of the Day</Text>
+
+        {loading && <Text>Loading...</Text>}
+        {error !== "" && <Text style={styles.error}>{error}</Text>}
+
+        {inspiration && (
+          <TouchableOpacity
+            onPress={() =>
+              router.push({
+                pathname: "/screenThree",
+                params: {
+                  title: inspiration.strMeal,
+                  ingredients: inspiration.strInstructions,
+                  category: inspiration.strCategory,
+                  image: inspiration.strMealThumb,
+                },
+              })
+            }
+          >
+            <Image
+              source={{ uri: inspiration.strMealThumb }}
+              style={styles.inspirationImage}
+            />
+            <Text style={styles.inspirationTitle}>{inspiration.strMeal}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Your Recipes */}
+      <Text style={styles.sectionTitle}>Your Recipes</Text>
+
+      {recipes.length === 0 ? (
+        <Text style={styles.emptyText}>No recipes yet. Add one!</Text>
+      ) : (
+        <FlatList
+          data={recipes}
+          keyExtractor={(_, i) => i.toString()}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.recipeCard}
+              onPress={() =>
+                router.push({
+                  pathname: "/screenThree",
+                  params: item,
+                })
+              }
+            >
+              <Text style={styles.recipeTitle}>{item.title}</Text>
+              <Text style={styles.recipeCategory}>{item.category}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      )}
+
+      <Link href="/screenTwo" style={styles.addButton}>
+        + Add Recipe
+      </Link>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: { flex: 1, padding: 20, backgroundColor: "#F5F3FF" },
+  header: { fontSize: 32, fontWeight: "bold", marginBottom: 20, color: "#2D2D2D" },
+  sectionTitle: { fontSize: 20, fontWeight: "600", marginBottom: 10, color: "rgb(107, 33, 168)" },
+  card: {
+    backgroundColor: "#FFFFFF",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 25,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  inspirationImage: { width: "100%", height: 180, borderRadius: 10, marginBottom: 10 },
+  inspirationTitle: { fontSize: 18, fontWeight: "600", color: "#2D2D2D" },
+  emptyText: { color: "#6B7280", marginBottom: 20 },
+  recipeCard: {
+    backgroundColor: "#FFFFFF",
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 12,
+    borderLeftWidth: 6,
+    borderLeftColor: "#A78BFA",
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  recipeTitle: { fontSize: 18, fontWeight: "600", color: "#2D2D2D" },
+  recipeCategory: { fontSize: 14, color: "#6B7280" },
+  addButton: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: "#A78BFA",
+    color: "white",
+    textAlign: "center",
+    borderRadius: 10,
+    fontSize: 18,
+    fontWeight: "600",
   },
+  error: { color: "red" },
 });

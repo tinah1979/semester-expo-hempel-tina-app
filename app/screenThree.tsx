@@ -1,37 +1,67 @@
-import { Link } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-export default function ScreenThree() {
+export default function RecipeDetailsScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+
+  const title = params.title as string;
+  const ingredients = params.ingredients as string;
+  const instructions = params.instructions as string;
+  const category = params.category as string;
+  const image = params.image as string | undefined;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Screen Three</Text>
-      <Text style={styles.text}>
-        This screen can be used for details, settings, or additional features.
-        Add content that matches your proposal.
-      </Text>
+    <ScrollView style={styles.container}>
+      <Stack.Screen options={{ title: "Recipe Details" }} />
 
-      <Link href="/" style={styles.button}>
-        Back to Home
-      </Link>
+      <Text style={styles.header}>{title}</Text>
 
-      <Link href="/screenTwo" style={styles.button}>
-        Go to Screen Two
-      </Link>
-    </View>
+      {image && <Image source={{ uri: image }} style={styles.image} />}
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Category</Text>
+        <Text style={styles.sectionText}>{category}</Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Ingredients</Text>
+        <Text style={styles.sectionText}>{ingredients}</Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Instructions</Text>
+        <Text style={styles.sectionText}>{instructions}</Text>
+      </View>
+
+      <TouchableOpacity style={styles.homeButton} onPress={() => router.back()}>
+        <Text style={styles.homeText}>Back to Home</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, justifyContent: "center" },
-  title: { fontSize: 26, fontWeight: "bold", marginBottom: 20 },
-  text: { fontSize: 16, marginBottom: 30 },
-  button: {
-    padding: 14,
-    backgroundColor: "#4a90e2",
-    color: "white",
+  container: { flex: 1, padding: 20, backgroundColor: "#F5F3FF" },
+  header: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 20,
+    color: "#2D2D2D",
     textAlign: "center",
-    borderRadius: 8,
-    marginBottom: 12,
-    fontSize: 16,
   },
+  image: { width: "100%", height: 220, borderRadius: 12, marginBottom: 20 },
+  section: {
+    backgroundColor: "#FFFFFF",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  sectionTitle: { fontSize: 20, fontWeight: "600", marginBottom: 8, color: "#6B21A8" },
+  sectionText: { fontSize: 16, color: "#2D2D2D", lineHeight: 22 },
+  homeButton: { backgroundColor: "#8B5CF6", padding: 16, borderRadius: 10, marginBottom: 30 },
+  homeText: { color: "white", textAlign: "center", fontSize: 18, fontWeight: "600" },
 });
