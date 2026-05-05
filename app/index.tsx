@@ -1,16 +1,17 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { setAddRecipeCallback } from "../utils/recipeStore";
 
+// user recipe type
 type Recipe = {
   title: string;
   category: string;
@@ -19,52 +20,74 @@ type Recipe = {
   image?: string;
 };
 
+// inspiration meal type
+type Meal = {
+  strMeal: string;
+  strMealThumb: string;
+};
+
 export default function HomeScreen() {
   const router = useRouter();
+
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [inspiration, setInspiration] = useState<Meal | null>(null);
 
-  // LOAD RECIPES ON APP START
-  useEffect(() => {
-    const loadRecipes = async () => {
-      try {
-        const saved = await AsyncStorage.getItem("recipes");
-        if (saved) {
-          setRecipes(JSON.parse(saved));
+  // load recipes from storage
+  const loadRecipes = useCallback(async () => {
+    try {
+      const saved = await AsyncStorage.getItem("recipes_v2");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+
+        if (Array.isArray(parsed)) {
+          setRecipes(parsed);
+        } else {
+          setRecipes([]);
         }
-      } catch (error) {
-        console.log("Error loading recipes:", error);
+      } else {
+        setRecipes([]);
       }
-    };
-
-    loadRecipes();
+    } catch (error) {
+      console.log("error loading recipes:", error);
+      setRecipes([]);
+    }
   }, []);
 
-  // SAVE RECIPES WHENEVER THEY CHANGE
+  // load once on mount
   useEffect(() => {
-    const saveRecipes = async () => {
+    loadRecipes();
+  }, [loadRecipes]);
+
+  // reload every time Home gets focus
+  useFocusEffect(
+    useCallback(() => {
+      loadRecipes();
+    }, [loadRecipes])
+  );
+
+  // load random inspiration meal
+  useEffect(() => {
+    const loadInspiration = async () => {
       try {
-        await AsyncStorage.setItem("recipes", JSON.stringify(recipes));
-      } catch (error) {
-        console.log("Error saving recipes:", error);
+        const res = await fetch(
+          "https://www.themealdb.com/api/json/v1/1/random.php"
+        );
+        const data = await res.json();
+        setInspiration(data.meals[0]);
+      } catch (err) {
+        console.log("error loading inspiration:", err);
       }
     };
 
-    saveRecipes();
-  }, [recipes]);
-
-  // CALLBACK FOR ADD RECIPE SCREEN
-  useEffect(() => {
-    setAddRecipeCallback((recipe: Recipe) => {
-      setRecipes((prev) => [...prev, recipe]);
-    });
+    loadInspiration();
   }, []);
 
   return (
     <ScrollView style={styles.container}>
-      {/* HEADER */}
+      {/* app title */}
       <Text style={styles.header}>RecipeBox</Text>
 
-      {/* YOUR RECIPES FIRST */}
+      {/* user recipes section */}
       <Text style={styles.sectionTitle}>Your Recipes</Text>
 
       {recipes.length === 0 ? (
@@ -77,7 +100,7 @@ export default function HomeScreen() {
             onPress={() =>
               router.push({
                 pathname: "/screenThree",
-                params: recipe,
+                params: { ...recipe, index },
               })
             }
           >
@@ -87,22 +110,23 @@ export default function HomeScreen() {
         ))
       )}
 
-      {/* INSPIRATION OF THE DAY WITH IMAGE */}
+      {/* inspiration section */}
       <Text style={styles.sectionTitle}>Inspiration of the Day</Text>
 
-      <View style={styles.inspirationCard}>
-        <Image
-          source={{
-            uri: "https://www.themealdb.com/images/media/meals/xrttsx1487339558.jpg",
-          }}
-          style={styles.inspirationImage}
-        />
-        <Text style={styles.inspirationTitle}>
-          Spanish-style slow-cooked lamb shoulder & beans
-        </Text>
-      </View>
+      {inspiration && (
+        <View style={styles.inspirationCard}>
+          <View style={styles.inspirationImageWrapper}>
+            <Image
+              source={{ uri: inspiration.strMealThumb }}
+              style={styles.inspirationImage}
+            />
+          </View>
 
-      {/* ADD RECIPE BUTTON */}
+          <Text style={styles.inspirationTitle}>{inspiration.strMeal}</Text>
+        </View>
+      )}
+
+      {/* add recipe button */}
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => router.push("/screenTwo")}
@@ -167,19 +191,33 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 6,
+    alignItems: "center",
+  },
+
+  inspirationImageWrapper: {
+    width: "100%",
+    maxWidth: 400,
+    alignSelf: "center",
+    position: "relative",
+    paddingBottom: Platform.OS === "web" ? 0 : "100%",
+    height: Platform.OS === "web" ? 250 : undefined,
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 10,
   },
 
   inspirationImage: {
+    position: "absolute",
     width: "100%",
-    height: 160,
-    borderRadius: 10,
-    marginBottom: 10,
+    height: "100%",
+    objectFit: "cover",
   },
 
   inspirationTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#4C1D95",
+    textAlign: "center",
   },
 
   addButton: {
